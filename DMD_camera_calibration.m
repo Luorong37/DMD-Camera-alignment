@@ -18,7 +18,7 @@ camera_height = 2304;
 camera_size = [camera_height, camera_width]; 
 
 % Pre generation of standard grid photo
-savepath = 'E:\1_Data\Lichen\20240708_DMDtest';
+savepath = 'C:\Users\DELL\Desktop\DMD\1 Code\DMD-Camera-alignment\test';
 calipath = fullfile(savepath,'DMD calibration');
 mkdir(calipath);
 Standard_Matrix_generator(calipath);
@@ -28,7 +28,7 @@ load(fullfile(calipath,'0_Standard parameters.mat'));
 
 % Now, images are generated onto savepath. Start the DMD and input images.
 % Choose the taken photo under DMD with calibrate matrix by camera
-selected_image = 'E:\1_Data\Lichen\20240708_DMDtest\FLX4-405-cubeset1-1.tif';
+selected_image = 'E:\0_Code\Luorong\DMD\workpath\standard2.tif';
 
 % judge if flipped
 flipped = true;

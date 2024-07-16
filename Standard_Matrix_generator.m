@@ -39,7 +39,7 @@ imshow(matrix);
 title('1920x1080 Matrix with 120x120 Grid and Numbered Crossings');
 hold on;
 
-fontSize = 20;
+fontSize = 40;
 xOffset = 20; % 调整数字在x方向上的偏移量
 yOffset = 60; % 调整数字在y方向上的偏移量
 
@@ -52,7 +52,7 @@ for row = 1:gridHeight:matrixHeight
         
         % 在图像上标记数字
         text(col + xOffset, row + yOffset, num2str(number), ...
-            'Color', 'white', 'FontSize', fontSize);
+            'Color', 'white', 'FontSize', fontSize,'FontWeight','bold');
     end
 end
 
