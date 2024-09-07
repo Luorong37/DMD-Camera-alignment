@@ -3,11 +3,11 @@
 % update at 20240907
 
 % This function performs the following tasks:
-% 1. Sets up initial parameters for DMD and camera resolution.
-% 2. Generates a standard grid photo and saves the calibration parameters.
-% 3. Takes a photo with this grid, selects 3 points on the image, and calculates a transformation matrix.
-% 4. Generates a mask based on a selected region of interest (ROI) and applies the transformation matrix.
+% 1. Sets up and generates a standard grid photo and saves the calibration parameters.
+% 2. Takes a photo with projected grid, selects 3 points on the image, and calculates a transformation matrix.
+% 3. Generates a mask based on a selected region of interest (ROI) and applies the transformation matrix.
 
+% You can run each section in order if required file prepared.
 %% Pre Setting
 
 % Pre setting of DMD  and Camera
@@ -15,36 +15,51 @@ dmd_width = 1920;
 dmd_height = 1080;
 dmd_size = [dmd_height, dmd_width];
 
-%---------------------------------------
 % Pre generation of standard grid photo
 savepath = uigetdir('Select a tif folder');% input save folder path
-% judge if flip is need
-camera_choice = questdlg('Choose a camera:','Selcet Option','2326','2325','Cancel');
-switch choice
+if savepath == 0
+    error('No folder selected.');
+else
+    disp(['Savepath: ', savepath]);
+end
+
+% choose a camera
+camera_choice = questdlg('Choose a camera:','Selcet Option','2326','2325','Cancel','Cancel');
+switch camera_choice
     case '2326'
         flipped = true; % 2326 for true and 2325 for false
+        disp('2326 selected. please choose 0_Flipped_Matrix.bmp for DMD calibration');
     case '2325'
         flipped = false; % 2326 for true and 2325 for false
+        disp('2325 selected. please choose 0_Standard_Matrix.bmp for DMD calibration');
     otherwise
         disp('Canceled')
         return;
 end
-%---------------------------------------
 
+% generate calibration folder
 calipath = fullfile(savepath,'DMD calibration');
 mkdir(calipath);
+
+% generate calibration files
 Standard_Matrix_generator(calipath);
 load(fullfile(calipath,'0_Standard parameters.mat'));
-
+close();
 fprintf('Standard grids generated\n')
 
 %% Take a photo
 
 % Now, images are generated in savepath. Start the DMD and input grid images into DMD.
-% Choose a tif photo of projected calibrate matrix taken by camera
+% Take a photo of projected calibrate matrix.
+
+% choose a tif photo
 [selected_name,selected_path] = uigetfile('*.tif','Choose a tif photo of projected calibrate matrix taken by camera',savepath);
 selected_image = fullfile(selected_path,selected_name);
-disp(['Selected image: ',selected_image])
+if selected_name == 0
+    error('No file selected.');
+else
+    disp(['Selected image: ', selected_image]);
+end
 
 % judge which maritx are used
 if flipped
@@ -120,7 +135,8 @@ display(T)
 % 'Manually in Matlab': you will select polygons for ROIs in a matlab
 % figure.
 % 'From Fiji': you should give a folder with .roi files, which created by
-% Fiji. in one case,if you want to create a mask by setting threshold, follow these steps:
+% Fiji. 
+% in one case,if you want to create a mask by setting threshold, follow these steps:
         % open image in imageJ, first set a threshold: (Image>Adjust>Threshold)
         % or (Ctrl+Shift+T), then transform to ROIs: (Analyze>Analyze Particles),
         % select Add to manager, next open ROI manager: (Analyze>Tools>ROI Manager),
