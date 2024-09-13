@@ -4,7 +4,7 @@ figure();
 fig = gcf;
 set(fig, 'KeyPressFcn', @(src, event) set_key_pressed(event, fig));
 imshow(imadjust(image));
-title(sprintf('Press SPACE to continue,Press ENTER to end,Press r to reselect'));
+title(sprintf('click points for a polygon. right click as end\nPress SPACE to continue,Press ENTER to end,Press r to reselect'));
 set(fig,'Position',get(0,'Screensize'))
 
 bwmask = zeros(size(image));

@@ -9,6 +9,7 @@
 
 % You can run each section in order if required file prepared.
 %% Pre Setting
+clear;clc;
 
 % Pre setting of DMD  and Camera
 dmd_width = 1920;
@@ -16,42 +17,85 @@ dmd_height = 1080;
 dmd_size = [dmd_height, dmd_width];
 
 % Pre generation of standard grid photo
-savepath = uigetdir('Select a tif folder');% input save folder path
+savepath = uigetdir('Select a folder as save path');% input save folder path
 if savepath == 0
     error('No folder selected.');
 else
     disp(['Savepath: ', savepath]);
 end
 
-% choose a camera
-camera_choice = questdlg('Choose a camera:','Selcet Option','2326','2325','Cancel','Cancel');
-switch camera_choice
+% choose a cube set.
+cube_set = {'cube1：488&561','cube2：488&594','cube3：488&640','cube4：532&640'};
+cube_choice = listdlg('ListString',cube_set,'PromptString','Choose one cube set','SelectionMode','single');
+disp([cube_set{cube_choice}, ' is selected.'])
+
+% choose a calibrate camera
+camera_choice = questdlg('Choose a calibrate camera:','Select Option','2326','2325','Cancel','Cancel');
+disp(['Camera ', camera_choice, ' is selected.'])
+
+% choose whether calibrate
+calibrate_choice = questdlg('Calibrate this time？','Select Option','Yes','No','Cancel','Cancel');
+switch calibrate_choice
+% this means you should calibrate the camera and DMD this time
+case 'Yes'
+    calibrate = true;
+
+    % generate calibration folder
+    calipath = fullfile(savepath,'DMD calibration');
+    mkdir(calipath);
+
+    % generate calibration files
+    Standard_Matrix_generator(calipath);
+    load(fullfile(calipath,'0_Standard parameters.mat'));
+    close();
+    fprintf('Standard grids generated\n')
+
+    % display a calibrate hint
+    switch camera_choice
     case '2326'
         flipped = true; % 2326 for true and 2325 for false
-        disp('2326 selected. please choose 0_Flipped_Matrix.bmp for DMD calibration');
+        h = msgbox(['Camera 2326 is selected. Please choose 0_Flipped_Matrix.bmp for DMD calibration. ' ...
+            'Click OK when a .tif photo of the projected calibration matrix taken by the camera is ready.'],'Wait','help');
+        uiwait(h);
     case '2325'
         flipped = false; % 2326 for true and 2325 for false
-        disp('2325 selected. please choose 0_Standard_Matrix.bmp for DMD calibration');
+        h = msgbox(['Camera 2325 is selected. Please choose 0_Standard_Matrix.bmp for DMD calibration. ' ...
+            'Click OK when a .tif photo of the projected calibration matrix taken by the camera is ready.'],'Wait','help');
+        uiwait(h);
     otherwise
         disp('Canceled')
         return;
+    end
+
+% this means you should NOT calibrate the camera and DMD this time.
+% Previous calbrate results will be used
+case 'No'
+    calibrate = false;
+
+    % load previous parameters
+    parapath = 'C:\Users\DELL\Desktop\DMD\1 Code\DMD-Camera-alignment\Standard_T_matrix\2024.09.13';
+    parafile = fullfile(parapath,camera_choice,cube_set{cube_choice},'1_Matrix parameters.mat');
+    try
+        load(parafile);
+        h = msgbox('Calibrate canceled, previous T will be used. Click OK when a .tif file is ready to generate the mask.','Wait','help');
+        uiwait(h);
+    catch
+        errordlg('No previous T saved!');
+        error('No previous T saved!');
+    end
+otherwise
+    disp('Canceled')
+    return;
 end
-
-% generate calibration folder
-calipath = fullfile(savepath,'DMD calibration');
-mkdir(calipath);
-
-% generate calibration files
-Standard_Matrix_generator(calipath);
-load(fullfile(calipath,'0_Standard parameters.mat'));
-close();
-fprintf('Standard grids generated\n')
 
 %% Take a photo
 
 % Now, images are generated in savepath. Start the DMD and input grid images into DMD.
 % Take a photo of projected calibrate matrix.
 
+% If NOT calibrate, ignore this part
+
+if calibrate
 % choose a tif photo
 [selected_name,selected_path] = uigetfile('*.tif','Choose a tif photo of projected calibrate matrix taken by camera',savepath);
 selected_image = fullfile(selected_path,selected_name);
@@ -106,6 +150,8 @@ png_filename = fullfile(calipath, '1_selected_Points.png');
 saveas(gcf, fig_filename, 'fig');
 saveas(gcf, png_filename, 'png');
 
+close(fig)
+
 % Calculate Transform Matrix
 points_standard = coords(selected_numbers,:);
 
@@ -120,14 +166,21 @@ T_points_standard = [points_standard(1,1), points_standard(2,1),points_standard(
 T = T_points_standard / T_points;
 
 % save matrix parameter
-save(fullfile(calipath,'1_Matrix parameters.mat'), 'T_points', 'T_points_standard', 'T','selected_numbers')
-statpath = fullfile('C:\Users\DELL\Desktop\DMD\1 Code\DMD-Camera-alignment\T_stat',strrep(string(datetime('now')), ':', '-'));
+save(fullfile(calipath,'1_Matrix parameters.mat'), 'T_points', 'T_points_standard', 'T','selected_numbers','im')
+
+% save matrix parameter to statistic folder
+statfolder = 'C:\Users\DELL\Desktop\DMD\1 Code\DMD-Camera-alignment\T_stat';
+time = strrep(string(datetime('now')), ':', '-');
+statpath = fullfile(statfolder,camera_choice,cube_set{cube_choice},time);
 mkdir(statpath);
-save(fullfile(statpath,'1_Matrix parameters.mat'), 'T_points', 'T_points_standard', 'T','selected_numbers')
+save(fullfile(statpath,'1_Matrix parameters.mat'), 'T_points', 'T_points_standard', 'T','selected_numbers','im')
 
 fprintf('Calibration compeleted\n')
 display(T)
 
+h = msgbox('Calibrate compeleted. Click OK when a .tif file is ready to generate the mask.','Wait','help');
+uiwait(h);
+end
 %% Generate mask
 
 % In this section, you have two mode to generate a mask: 'Manually in
@@ -136,11 +189,15 @@ display(T)
 % figure.
 % 'From Fiji': you should give a folder with .roi files, which created by
 % Fiji. 
-% in one case,if you want to create a mask by setting threshold, follow these steps:
+% 
+% in one case, if you want to create a mask by setting threshold, follow these steps:
         % open image in imageJ, first set a threshold: (Image>Adjust>Threshold)
         % or (Ctrl+Shift+T), then transform to ROIs: (Analyze>Analyze Particles),
         % select Add to manager, next open ROI manager: (Analyze>Tools>ROI Manager),
         % save all ROIs：(More>Save), Unzip saved zip to roi_folder.
+%        
+% in other case, this program will generate a reverse mask, so you need not
+% to select the reversed ROI if you need.
 
 % preset
 bwmask_DMD = zeros(dmd_height,dmd_width);
@@ -150,7 +207,11 @@ view_size = size(im);
 % select a view image
 [view_name,view_path] = uigetfile('*.tif','Select a tif image',savepath);
 view_image = fullfile(view_path,view_name);
-disp(['Selected image: ',view_image])
+if view_name == 0
+    error('No file selected.');
+else
+    disp(['Selected image: ', view_image]);
+end
 view = imread(view_image);
 
 % create save folder
@@ -216,16 +277,39 @@ end
 bwmask_DMD(bwmask_DMD ~= 0) = 255;
 bwmask_DMD = uint8(bwmask_DMD);
 
+% save a reverse mask
+bwmask_DMD_reverse = zeros(dmd_size);
+view_position = [0,0;0,view_size(2);view_size;view_size(1),0];
+view_points_homogeneous = [view_position, ones(4, 1)]; % Nx3 matrix
+view_transformed_points_homogeneous = (T * view_points_homogeneous')';  % Perform affine transformation
+view_transformed_points = view_transformed_points_homogeneous(:, 1:2);  % Convert back to Cartesian coordinates
+view_mask = poly2mask(view_transformed_points(:, 2),view_transformed_points(:, 1),dmd_height,dmd_width);
+
+% reset all pixels not in view
+bwmask_DMD_reverse(bwmask_DMD ~= 0) = 0;
+bwmask_DMD_reverse(bwmask_DMD == 0) = 255;
+bwmask_DMD_reverse(view_mask == 0) = 0;
+bwmask_DMD_reverse = uint8(bwmask_DMD_reverse);
+
 % create a camera mask
 bwmask_camera(bwmask_camera ~= 0) = 255;
 bwmask_camera = uint8(bwmask_camera);
+% save a reverse mask
+bwmask_camera_reverse = zeros(size(bwmask_camera));
+bwmask_camera_reverse(bwmask_camera ~= 0) = 0;
+bwmask_camera_reverse(bwmask_camera == 0) = 255;
+bwmask_camera_reverse = uint8(bwmask_camera_reverse);
 
 % Save mask
 imwrite(bwmask_DMD, fullfile(createpath,'2_bwmask_DMD.bmp'));
 imwrite(bwmask_DMD, fullfile(createpath,'2_bwmask_DMD2.bmp'));
+imwrite(bwmask_DMD_reverse, fullfile(createpath,'4_bwmask_DMD_reverse.bmp'));
+imwrite(bwmask_DMD_reverse, fullfile(createpath,'4_bwmask_DMD_reverse2.bmp'));
 
 imwrite(bwmask_camera, fullfile(createpath,'3_bwmask_camera.tif'));
 imwrite(bwmask_camera, fullfile(createpath,'3_bwmask_camera.png'));
+imwrite(bwmask_camera_reverse, fullfile(createpath,'5_bwmask_camera_reverse.tif'));
+imwrite(bwmask_camera_reverse, fullfile(createpath,'5_bwmask_camera_reverse.png'));
 
 fprintf('Masks generated\n')
 
