@@ -1,4 +1,4 @@
-function createBinaryImageUI(origin_image)
+function fig = createBinaryImageUI(origin_image)
     
     % 获取屏幕尺寸并设置为全屏
     screenSize = get(0, 'ScreenSize');
@@ -38,9 +38,7 @@ function createBinaryImageUI(origin_image)
     
     % 创建扩展距离输入框
     expansionField = uieditfield(fig, 'numeric', 'Position', [screenSize(3)/2 + 660 bottom_edge 50 30]);
-    
-
-    
+        
     % 初始化默认阈值、最小面积和扩展距离
     defaultThreshold = 50;
     defaultMinArea = 10;
@@ -49,7 +47,6 @@ function createBinaryImageUI(origin_image)
     thresholdField.Value = defaultThreshold;
     minAreaField.Value = defaultMinArea;
     expansionField.Value = defaultExpansion;
-
     
     % 为输入框设置回调函数，确保 minAreaField 已定义
     thresholdField.ValueChangedFcn = @(src, event) updateBinaryImage(src.Value, minAreaField.Value, expansionField.Value, origin_image, ax2, fig);
@@ -113,19 +110,35 @@ function updateBinaryImage(thresholdPercent, minArea, expansionDistance, img, ax
     setappdata(fig, 'binaryImage', filteredBinaryImage);
     setappdata(fig, 'boundaries', boundaries);
     setappdata(fig, 'expandedBoundaries', expandedBoundaries);
+    setappdata(fig, 'thresholdPercent', thresholdPercent);
+    setappdata(fig, 'minArea', minArea);
+    setappdata(fig, 'expansionDistance', expansionDistance);
+
 end
 
+% 保存二值化图像函数
 % 保存二值化图像函数
 function saveBinaryImage(fig)
     % 从应用程序数据中获取 binaryImage 和 boundaries
     binaryImage = getappdata(fig, 'binaryImage');
     boundaries = getappdata(fig, 'boundaries');
     expandedBoundaries = getappdata(fig, 'expandedBoundaries');
+    thresholdPercent = getappdata(fig, 'thresholdPercent');
+    minArea = getappdata(fig, 'minArea');
+    expansionDistance = getappdata(fig, 'expansionDistance');
     
-    % 将二值化图像和边缘保存到工作区
-    assignin('base', 'binaryImageOutput', binaryImage);
-    assignin('base', 'boundariesOutput', boundaries);
-    assignin('base', 'expandboundariesOutput', expandedBoundaries);
+    % 创建一个结构体 rois 来存储结果
+    rois.bwmask = binaryImage;                % 二值化图像
+    rois.Position = boundaries;               % 原始边界位置
+    rois.expandPosition = expandedBoundaries; % 扩展边界位置
+    rois.thresholdPercent = thresholdPercent;
+    rois.minArea = minArea;
+    rois.expansionDistance = expansionDistance;
+    
+    % 将结构体保存到工作区
+    assignin('base', 'rois', rois);
 
-    disp('Binary image is saved as para：binaryImageOutput, boundariesOutput, and expandboundariesOutput.');
+    disp('Binary image is saved as structure: rois.');
+    msgbox('Binary results are saved in structure "rois"','Done','help');
 end
+

@@ -220,7 +220,7 @@ createpath = fullfile(imagepath,imagename);
 mkdir(createpath);
 
 % Choose a ROI select mode
-choice = questdlg('Choose a ROI select mode:','Select Option','Manually in Matlab','From Fiji','Cancel');
+choice = questdlg('Choose a ROI select mode:','Select Option','Manually in Matlab','Create binary mask in Matlab','From Fiji','Manually in Matlab');
 switch choice
     case 'Manually in Matlab'
         % manually select ROIs
@@ -230,6 +230,15 @@ switch choice
         saveas(gcf, fig_filename, 'fig');
         saveas(gcf, png_filename, 'png');
         close()
+    case 'Create binary mask in Matlab'
+        fig = createBinaryImageUI(view);
+        waitfor(fig);
+        fig_filename = fullfile(createpath, '1_selectedROI.fig');
+        savefig(fig, fig_filename);
+        png_filename = fullfile(createpath, '1_selectedROI.png');
+        ax = findall(fig, 'Type', 'axes');
+        % 将特定的轴或整个图形保存为png
+        exportgraphics(ax(2), png_filename, 'Resolution', 300); % 选择第一个图形轴保存        
     case 'From Fiji'
         % load fiji rois
         roi_folder = uigetdir(savepath,'Select a unzipped ROI floder');
@@ -251,10 +260,18 @@ mkdir(save_path_rois);
 mkdir(save_path_rois_8bit);
 mkdir(save_path_rois_1bit);
 
-for i = 1: size(rois.Position,2)
+% if expand was selected, then generate expand ROIs
+if rois.expansionDistance ~= 0
+    boundaries = rois.expandPosition;
+else
+    boundaries = rois.Position;
+end
+
+% generate mask by each ROI
+for i = 1: size(boundaries,2)
     % Convert points to homogeneous coordinates
-    npoints = size(rois.Position{i}, 1);  % number of points in a ROI
-    positions = rois.Position{i}; % positions of points in a ROI
+    npoints = size(boundaries{i}, 1);  % number of points in a ROI
+    positions = boundaries{i}; % positions of points in a ROI
 
     points_homogeneous = [positions, ones(npoints, 1)]; % Nx3 matrix
     transformed_points_homogeneous = (T * points_homogeneous')';  % Perform affine transformation
