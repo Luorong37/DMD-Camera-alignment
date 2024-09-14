@@ -2,7 +2,7 @@ function fig = createBinaryImageUI(origin_image)
     
     % 获取屏幕尺寸并设置为全屏
     screenSize = get(0, 'ScreenSize');
-    imageSize = size(origin_image)*1.5;
+    imageSize = size(origin_image);
     
     % 创建UI窗口，使用全屏尺寸
     fig = uifigure('Position', [0 0 screenSize(3) screenSize(4)], 'Name', 'Binary GUI');
@@ -16,7 +16,7 @@ function fig = createBinaryImageUI(origin_image)
     title(ax2, 'Binary Image','HorizontalAlignment', 'center');
     
     % 显示在左侧
-    imshow(origin_image, 'Parent', ax1);
+    imshow(imadjust(origin_image), 'Parent', ax1);
     
     % 输入框标签离底部距离
     bottom_edge = screenSize(4)/7;
@@ -40,7 +40,7 @@ function fig = createBinaryImageUI(origin_image)
     expansionField = uieditfield(fig, 'numeric', 'Position', [screenSize(3)/2 + 660 bottom_edge 50 30]);
         
     % 初始化默认阈值、最小面积和扩展距离
-    defaultThreshold = 50;
+    defaultThreshold = 99.5;
     defaultMinArea = 10;
     defaultExpansion = 0;
     
@@ -67,11 +67,8 @@ function updateBinaryImage(thresholdPercent, minArea, expansionDistance, img, ax
     % 将百分比转换为实际阈值
     threshold = 1 - thresholdPercent / 100;
     
-    % 转换为灰度图像
-    grayImg = rgb2gray(img);
-    
     % 根据阈值进行二值化处理
-    binaryImage = imbinarize(grayImg, threshold);
+    binaryImage = imbinarize(img, threshold);
     
     % 过滤掉面积过小的区域
     filteredBinaryImage = bwareaopen(binaryImage, minArea);

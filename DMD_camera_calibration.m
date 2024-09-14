@@ -34,7 +34,7 @@ camera_choice = questdlg('Choose a calibrate camera:','Select Option','2326','23
 disp(['Camera ', camera_choice, ' is selected.'])
 
 % choose whether calibrate
-calibrate_choice = questdlg('Calibrate this time？','Select Option','Yes','No','Cancel','Cancel');
+calibrate_choice = questdlg('Calibrate this time？','Select Option','Yes','No (Testing)','Cancel','Cancel');
 switch calibrate_choice
 % this means you should calibrate the camera and DMD this time
 case 'Yes'
@@ -233,12 +233,23 @@ switch choice
     case 'Create binary mask in Matlab'
         fig = createBinaryImageUI(view);
         waitfor(fig);
+        figure()
+        imshow(imadjust(uint8(rois.bwmask)))
+        hold on;
+        for k = 1:length(rois.Position)
+        boundary = rois.Position{k};
+        plot(boundary(:,2), boundary(:,1), 'y', 'LineWidth', 0.5); % 黄色线绘制边缘
+        end
+        for k = 1:length(rois.expandPosition)
+        expandedBoundary = rois.expandPosition{k};
+        plot(expandedBoundary(:,2), expandedBoundary(:,1), 'r', 'LineWidth', 1.5); % 红色虚线绘制外扩边缘
+        end
+        hold off;
         fig_filename = fullfile(createpath, '1_selectedROI.fig');
-        savefig(fig, fig_filename);
         png_filename = fullfile(createpath, '1_selectedROI.png');
-        ax = findall(fig, 'Type', 'axes');
-        % 将特定的轴或整个图形保存为png
-        exportgraphics(ax(2), png_filename, 'Resolution', 300); % 选择第一个图形轴保存        
+        saveas(gcf, fig_filename, 'fig');
+        saveas(gcf, png_filename, 'png');
+        close()
     case 'From Fiji'
         % load fiji rois
         roi_folder = uigetdir(savepath,'Select a unzipped ROI floder');
@@ -261,14 +272,24 @@ mkdir(save_path_rois_8bit);
 mkdir(save_path_rois_1bit);
 
 % if expand was selected, then generate expand ROIs
-if rois.expansionDistance ~= 0
-    boundaries = rois.expandPosition;
+boundaries = {};
+if isfield(rois, 'expansionDistance')
+    if rois.expansionDistance ~= 0
+        boundarytemple = rois.expandPosition;
+    else
+        boundarytemple = rois.Position;
+    end
+    for i = 1:length(boundarytemple)
+        boundaries{i}(:,1) = rois.expandPosition{i}(:,2);
+        boundaries{i}(:,2) = rois.expandPosition{i}(:,1);
+    end
 else
     boundaries = rois.Position;
 end
 
+disp('Mask generating......')
 % generate mask by each ROI
-for i = 1: size(boundaries,2)
+for i = 1: length(boundaries)
     % Convert points to homogeneous coordinates
     npoints = size(boundaries{i}, 1);  % number of points in a ROI
     positions = boundaries{i}; % positions of points in a ROI
