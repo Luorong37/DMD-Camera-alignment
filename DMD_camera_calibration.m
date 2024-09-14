@@ -287,7 +287,7 @@ else
     boundaries = rois.Position;
 end
 
-disp('Mask generating......')
+disp('Mask generating...')
 % generate mask by each ROI
 for i = 1: length(boundaries)
     % Convert points to homogeneous coordinates

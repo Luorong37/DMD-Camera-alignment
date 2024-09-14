@@ -136,6 +136,6 @@ function saveBinaryImage(fig)
     assignin('base', 'rois', rois);
 
     disp('Binary image is saved as structure: rois.');
-    msgbox('Binary results are saved in structure "rois"','Done','help');
+    msgbox('Binary results are saved in structure "rois". Close GUI window to continue.','Done','help');
 end
 
