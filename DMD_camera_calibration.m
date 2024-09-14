@@ -69,7 +69,7 @@ case 'Yes'
 
 % this means you should NOT calibrate the camera and DMD this time.
 % Previous calbrate results will be used
-case 'No'
+case 'No (Testing)'
     calibrate = false;
 
     % load previous parameters
@@ -228,31 +228,39 @@ switch choice
         fig_filename = fullfile(createpath, '1_selectedROI.fig');
         png_filename = fullfile(createpath, '1_selectedROI.png');
         saveas(gcf, fig_filename, 'fig');
-        saveas(gcf, png_filename, 'png');
+        disp('ROI saving...')
+        exportgraphics(gca, png_filename, 'Resolution', 300); % Save axes as a PNG with specified resolution
         close()
     case 'Create binary mask in Matlab'
         fig = createBinaryImageUI(view);
         waitfor(fig);
         figure()
-        imshow(imadjust(uint8(rois.bwmask)))
+        h = imshow(imadjust(uint8(rois.bwmask)));
         hold on;
-        for k = 1:length(rois.Position)
-        boundary = rois.Position{k};
-        plot(boundary(:,2), boundary(:,1), 'y', 'LineWidth', 0.5); % 黄色线绘制边缘
-        end
+
+        % Plot the expanded boundaries
         for k = 1:length(rois.expandPosition)
         expandedBoundary = rois.expandPosition{k};
         plot(expandedBoundary(:,2), expandedBoundary(:,1), 'r', 'LineWidth', 1.5); % 红色虚线绘制外扩边缘
         end
+
+        % Plot the boundaries
+        for k = 1:length(rois.Position)
+        boundary = rois.Position{k};
+        plot(boundary(:,2), boundary(:,1), 'y', 'LineWidth', 0.5); % 黄色线绘制边缘
+        end
         hold off;
+        
+        % save
         fig_filename = fullfile(createpath, '1_selectedROI.fig');
         png_filename = fullfile(createpath, '1_selectedROI.png');
-        saveas(gcf, fig_filename, 'fig');
-        saveas(gcf, png_filename, 'png');
+        saveas(gca, fig_filename, 'fig');
+        disp('ROI saving...')
+        exportgraphics(gca, png_filename, 'Resolution', 300); % Save axes as a PNG with specified resolution
         close()
     case 'From Fiji'
         % load fiji rois
-        roi_folder = uigetdir(savepath,'Select a unzipped ROI floder');
+        roi_folder = uigetdir(savepath,'Select a unzipped ROI folder');
         disp(['Selected ROIset: ',roi_folder])
         rois = import_fiji_rois_to_bwmask(roi_folder, createpath, view_size);
     otherwise
