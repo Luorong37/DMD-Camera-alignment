@@ -1504,3 +1504,148 @@ elseif c < cfg.cycles && wait_time <= 0
 end
 end
 
+function [method_id, method_path] = allocate_method_id(root_path, method_note)
+if nargin < 2 || strlength(string(method_note)) == 0
+    method_note = "default";
+end
+
+method_note = char(string(method_note));
+safe_note = regexprep(strtrim(method_note), '[\\/:*?"<>|]+', '_');
+if isempty(safe_note)
+    safe_note = 'default';
+end
+
+index_file = fullfile(root_path, 'methindex.mat');
+method_dirs = dir(fullfile(root_path, 'Methods*'));
+existing_ids = [];
+for k = 1:numel(method_dirs)
+    if method_dirs(k).isdir
+        token = regexp(method_dirs(k).name, '^Methods(\d+)', 'tokens', 'once');
+        if ~isempty(token)
+            existing_ids(end + 1) = str2double(token{1}); %#ok<AGROW>
+        end
+    end
+end
+
+last_id = 0;
+if exist(index_file, 'file')
+    s = load(index_file, 'methindex');
+    if isfield(s, 'methindex') && ~isempty(s.methindex)
+        last_id = max(last_id, double(s.methindex));
+    end
+end
+if ~isempty(existing_ids)
+    last_id = max(last_id, max(existing_ids));
+end
+
+method_id = last_id + 1;
+method_path = fullfile(root_path, sprintf('Methods%d_%s', method_id, safe_note));
+
+methindex = method_id; %#ok<NASGU>
+save(index_file, 'methindex');
+end
+
+function [record_id, record_path] = allocate_record_id(method_path, timestamp_text)
+if nargin < 2 || strlength(string(timestamp_text)) == 0
+    timestamp_text = string(datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss'));
+end
+
+timestamp_text = char(string(timestamp_text));
+safe_time = regexprep(timestamp_text, '[\\/:*?"<>|]+', '-');
+
+if ~exist(method_path, 'dir')
+    mkdir(method_path);
+end
+
+index_file = fullfile(method_path, 'recindex.mat');
+record_dirs = dir(fullfile(method_path, 'Rec*'));
+existing_ids = [];
+for k = 1:numel(record_dirs)
+    if record_dirs(k).isdir
+        token = regexp(record_dirs(k).name, '^Rec(\d+)', 'tokens', 'once');
+        if ~isempty(token)
+            existing_ids(end + 1) = str2double(token{1}); %#ok<AGROW>
+        end
+    end
+end
+
+last_id = 0;
+if exist(index_file, 'file')
+    s = load(index_file, 'recindex');
+    if isfield(s, 'recindex') && ~isempty(s.recindex)
+        last_id = max(last_id, double(s.recindex));
+    end
+end
+if ~isempty(existing_ids)
+    last_id = max(last_id, max(existing_ids));
+end
+
+record_id = last_id + 1;
+record_path = fullfile(method_path, sprintf('Rec%d_%s', record_id, safe_time));
+
+recindex = record_id; %#ok<NASGU>
+save(index_file, 'recindex');
+end
+
+function y = generateDigitalSignal(type, f, fs, duration, varargin)
+if nargin < 4
+    error('generateDigitalSignal requires type, f, fs, and duration.');
+end
+
+p = inputParser;
+addParameter(p, 'pulseWidth', 1 / (2 * f), @(x) isscalar(x) && x > 0 && x <= 1 / f);
+addParameter(p, 'phase', 0, @(x) isscalar(x) && x >= 0);
+parse(p, varargin{:});
+pulseWidth = p.Results.pulseWidth;
+phase = p.Results.phase;
+
+if ~ischar(type) && ~isstring(type)
+    error('type must be a character vector or string scalar.');
+end
+if ~isscalar(f) || f <= 0
+    error('f must be a positive scalar.');
+end
+if ~isscalar(fs) || fs <= 0
+    error('fs must be a positive scalar.');
+end
+if ~isscalar(duration) || duration <= 0
+    error('duration must be a positive scalar.');
+end
+if pulseWidth > 1 / f
+    error('pulseWidth must be less than or equal to one period.');
+end
+
+dutyCycle = pulseWidth * f;
+n = round(fs * duration);
+if n < 1
+    error('duration is too short to generate a digital signal.');
+end
+
+t = (0:n - 1)' / fs - phase;
+
+switch lower(char(type))
+    case {'square', 'pulse'}
+        phase_in_cycle = mod(f * t, 1);
+        y = double(phase_in_cycle < dutyCycle);
+
+    case 'clock'
+        T = 1 / f;
+        num_cycles = floor((duration + phase) / T);
+        y = zeros(n, 1);
+        for i = 0:num_cycles - 1
+            pulse_time = i * T + phase;
+            if pulse_time >= 0 && pulse_time < duration
+                pulse_index = round(pulse_time * fs) + 1;
+                if pulse_index <= n
+                    y(pulse_index) = 1;
+                end
+            end
+        end
+
+    otherwise
+        error('Unsupported signal type: %s', char(type));
+end
+
+y = double(y);
+end
+
